@@ -13,7 +13,15 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Install nightly
+    - name: Install nightly linux
       run: rustup toolchain install nightly
-    - name: Build
-      run: cargo +nightly build --release --verbose
+    - name: Install nightly mac
+      run: rustup toolchain install nightly-x86_64-apple-darwin
+    - name: Install nightly win
+      run: rustup toolchain install nightly-x86_64-pc-windows-gnu
+    - name: Build linux
+      run: cargo +nightly build --target x86_64-unknown-linux-gnu --release
+    - name: Build mac
+      run: cargo +nightly build --target x86_64-apple-darwin --release
+    - name: Build win
+      run: cargo +nightly build --target x86_64-pc-windows-gnu --release
