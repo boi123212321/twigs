@@ -10,7 +10,7 @@ use rocket::http::Status;
 
 lazy_static! {
   static ref ID_MAP: Mutex<HashMap<String, u32>> = Mutex::new(HashMap::new());
-  static ref ACTORS: Mutex<HashMap<u32, Actor>> = Mutex::new(HashMap::new());
+  static ref IMAGES: Mutex<HashMap<u32, Image>> = Mutex::new(HashMap::new());
   static ref TOKENS: Mutex<HashMap<String, Vec<u32>>> = Mutex::new(HashMap::new());
 }
 
@@ -22,33 +22,31 @@ struct Aliasable {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-struct Actor {
+struct Image {
   id: String,
   name: String,
   added_on: u32,
-  born_on: Option<u32>,
-  aliases: Vec<String>,
+  actors: Vec<Aliasable>,
   labels: Vec<Aliasable>,
   bookmark: bool,
   favorite: bool,
   rating: u8,
-  num_scenes: u32,
-  num_views: u32,
+  scene_name: Option<String>
 }
 
 #[delete("/")]
-fn clear_actors() -> Status {
-  println!("Clearing actor index...");
+fn clear_images() -> Status {
+  println!("Clearing image index...");
 
   let mut id_map = ID_MAP.lock().unwrap();
-  let mut actors = ACTORS.lock().unwrap();
+  let mut images = IMAGES.lock().unwrap();
   let mut tokens = TOKENS.lock().unwrap();
 
   // TODO: clear memory
-  actors.clear();
+  images.clear();
   tokens.clear();
   id_map.clear();
-  actors.shrink_to_fit();
+  images.shrink_to_fit();
   tokens.shrink_to_fit();
   id_map.shrink_to_fit();
 
@@ -57,22 +55,22 @@ fn clear_actors() -> Status {
 
 // TODO: support vector of strings as input (from request body)
 #[delete("/<id>")]
-fn delete_actor(id: &RawStr) -> Status {
+fn delete_image(id: &RawStr) -> Status {
   println!("Deleting {}", id.as_str());
 
   let id_map = ID_MAP.lock().unwrap();
-  let actor_id = id.as_str();
+  let image_id = id.as_str();
 
-  if !id_map.contains_key(actor_id) {
+  if !id_map.contains_key(image_id) {
     return Status::NotFound;
   }
   else {    
-    let internal_id = id_map[actor_id];
+    let internal_id = id_map[image_id];
 
-    let mut actors = ACTORS.lock().unwrap();
+    let mut images = IMAGES.lock().unwrap();
     let mut tokens = TOKENS.lock().unwrap();
 
-    actors.remove(&internal_id);
+    images.remove(&internal_id);
 
     for vec in tokens.values_mut() {
       vec.retain(|x| *x != internal_id);
@@ -83,7 +81,7 @@ fn delete_actor(id: &RawStr) -> Status {
 }
 
 #[get("/?<query>&<take>&<skip>&<sort_by>&<sort_dir>&<bookmark>&<favorite>&<rating>&<include>&<exclude>")]
-fn get_actors(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort_by: Option<&RawStr>, sort_dir: Option<&RawStr>, bookmark: Option<&RawStr>, favorite: Option<&RawStr>, rating: Option<&RawStr>, include: Option<&RawStr>, exclude: Option<&RawStr>) -> Json<JsonValue> {
+fn get_images(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort_by: Option<&RawStr>, sort_dir: Option<&RawStr>, bookmark: Option<&RawStr>, favorite: Option<&RawStr>, rating: Option<&RawStr>, include: Option<&RawStr>, exclude: Option<&RawStr>) -> Json<JsonValue> {
   let s = query.url_decode().unwrap();
   println!("Searching for {}", s);
   let now = Instant::now();
@@ -94,8 +92,8 @@ fn get_actors(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort
   let regex = Regex::new(r"[^a-zA-Z0-9]").unwrap();
   let result = regex.replace_all(&s, " ").to_lowercase();
 
-  let actors = ACTORS.lock().unwrap();
-  let mut real_actors: Vec<Actor> = Vec::new();
+  let images = IMAGES.lock().unwrap();
+  let mut real_images: Vec<Image> = Vec::new();
 
   if result.len() > 0 {
     for token in result.split(" ") {
@@ -136,7 +134,7 @@ fn get_actors(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort
       key_score_list.sort_by(|a,b| a.1.cmp(&b.1));
     }
   
-    // Get real actors
+    // Get real images
   
     let mut _skip = 0;
     
@@ -154,34 +152,34 @@ fn get_actors(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort
   
     for tuple in key_score_list.iter_mut().rev().skip(_skip).take(_take) {
       // if tuple.1 >= num_ngrams / 2 {
-        real_actors.push(
-          actors.get(&tuple.0).unwrap().clone()
+        real_images.push(
+          images.get(&tuple.0).unwrap().clone()
         );
       // }
     }
   }
   else {
-    for actor in actors.values() {
-      real_actors.push(actor.clone());
+    for actor in images.values() {
+      real_images.push(actor.clone());
     }
   }
 
   if !favorite.is_none() && favorite.unwrap() == "true" {
-    real_actors.retain(|a| a.favorite);
+    real_images.retain(|a| a.favorite);
   }
 
   if !bookmark.is_none() && bookmark.unwrap() == "true" {
-    real_actors.retain(|a| a.bookmark);
+    real_images.retain(|a| a.bookmark);
   }
 
   if !rating.is_none() {
     let rating_value = rating.unwrap().parse::<u8>().expect("Invalid rating");
-    real_actors.retain(|a| a.rating >= rating_value);
+    real_images.retain(|a| a.rating >= rating_value);
   }
 
   if !include.is_none() {
     let include_labels = include.unwrap().as_str().split(",").collect::<Vec<&str>>();
-    real_actors.retain(|a| {
+    real_images.retain(|a| {
       for include in include_labels.iter() {
         let include_label = String::from(*include);
         let mut is_labelled = false;
@@ -200,7 +198,7 @@ fn get_actors(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort
 
   if !exclude.is_none() {
     let exclude_labels = exclude.unwrap().as_str().split(",").collect::<Vec<&str>>();
-    real_actors.retain(|a| {
+    real_images.retain(|a| {
       for exclude in exclude_labels.iter() {
         let exclude_label = String::from(*exclude);
         let mut is_labelled = false;
@@ -219,64 +217,34 @@ fn get_actors(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort
 
   if !sort_by.is_none() {
     // Sort by attribute
-    if sort_by.unwrap() == "age" {
-      real_actors.sort_by(|a,b| {
-        let a = a.born_on.unwrap_or(0);
-        let b = b.born_on.unwrap_or(0);
-        return a.partial_cmp(&b).unwrap();
-      });
-      if !sort_dir.is_none() && sort_dir.unwrap() == "desc" {
-        real_actors.reverse();
-      }
-    }
-    else if sort_by.unwrap() == "rating" {
-      real_actors.sort_by(|a,b| {
+    if sort_by.unwrap() == "rating" {
+      real_images.sort_by(|a,b| {
         let a = a.rating;
         let b = b.rating;
         return a.partial_cmp(&b).unwrap();
       });
       if !sort_dir.is_none() && sort_dir.unwrap() == "desc" {
-        real_actors.reverse();
+        real_images.reverse();
       }
     }
     else if sort_by.unwrap() == "addedOn" || sort_by.unwrap() == "added_on" {
-      real_actors.sort_by(|a,b| {
+      real_images.sort_by(|a,b| {
         let a = a.added_on;
         let b = b.added_on;
         return a.partial_cmp(&b).unwrap();
       });
       if !sort_dir.is_none() && sort_dir.unwrap() == "desc" {
-        real_actors.reverse();
-      }
-    }
-    else if sort_by.unwrap() == "numScenes" || sort_by.unwrap() == "num_scenes" {
-      real_actors.sort_by(|a,b| {
-        let a = a.num_scenes;
-        let b = b.num_scenes;
-        return a.partial_cmp(&b).unwrap();
-      });
-      if !sort_dir.is_none() && sort_dir.unwrap() == "desc" {
-        real_actors.reverse();
-      }
-    }
-    else if sort_by.unwrap() == "numViews" || sort_by.unwrap() == "num_views" {
-      real_actors.sort_by(|a,b| {
-        let a = a.num_views;
-        let b = b.num_views;
-        return a.partial_cmp(&b).unwrap();
-      });
-      if !sort_dir.is_none() && sort_dir.unwrap() == "desc" {
-        real_actors.reverse();
+        real_images.reverse();
       }
     }
     else if sort_by.unwrap() == "name" {
-      real_actors.sort_by(|a,b| {
+      real_images.sort_by(|a,b| {
         let a = &a.name;
         let b = &b.name;
         return a.to_lowercase().cmp(&b.to_lowercase());
       });
       if !sort_dir.is_none() && sort_dir.unwrap() == "desc" {
-        real_actors.reverse();
+        real_images.reverse();
       }
     }
     else {
@@ -291,8 +259,8 @@ fn get_actors(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort
       "milli": now.elapsed().as_millis() as u64,
       "micro": now.elapsed().as_micros() as u64,
     },
-    "size": real_actors.len(),
-    "result": real_actors
+    "size": real_images.len(),
+    "result": real_images
   }))
 }
 
@@ -340,41 +308,44 @@ fn process_labels(labels: Vec<Aliasable>, ret_id: u32) {
 }
 
 #[post("/", data = "<inputs>")]
-fn create_actors(inputs: Json<Vec<Actor>>) -> Json<JsonValue>  {
+fn create_images(inputs: Json<Vec<Image>>) -> Json<JsonValue>  {
   let mut id_map = ID_MAP.lock().unwrap();
   
-  let mut actors = ACTORS.lock().unwrap();
-  let input_actors = inputs.into_inner();
+  let mut images = IMAGES.lock().unwrap();
+  let input_images = inputs.into_inner();
   
-  let mut created_actors: Vec<Actor> = Vec::new();
+  let mut created_images: Vec<Image> = Vec::new();
   
-  for actor in input_actors.iter() {
-    let id = actors.len() as u32;
+  for image in input_images.iter() {
+    let id = images.len() as u32;
     let ret_id = id.clone();
-    let ret_actor = actor.clone();
+    let ret_image = image.clone();
     
-    actors.insert(
+    images.insert(
       id,
-      actor.clone()
+      image.clone()
     );
 
     id_map.insert(
-      actor.id.clone(),
+      image.id.clone(),
       id
     );
     
-    process_string(ret_actor.name.clone(), ret_id);
-    process_string(ret_actor.aliases.clone().join(" "), ret_id);
-    process_labels(ret_actor.clone().labels.clone(), ret_id);
-    created_actors.push(ret_actor);
+    process_string(ret_image.name.clone(), ret_id);
+    if !ret_image.scene_name.is_none() {
+      process_string(ret_image.clone().scene_name.unwrap().clone(), ret_id);
+    }
+    process_labels(ret_image.clone().actors.clone(), ret_id);
+    process_labels(ret_image.clone().labels.clone(), ret_id);
+    created_images.push(ret_image);
   }
 
   Json(json!({
-    "size": actors.len(),
-    "actors": created_actors,
+    "size": images.len(),
+    "images": created_images,
   }))
 }
 
-pub fn get_actor_routes() -> Vec<rocket::Route> {
-  routes![get_actors, create_actors, delete_actor, clear_actors]
+pub fn get_image_routes() -> Vec<rocket::Route> {
+  routes![get_images, create_images, delete_image, clear_images]
 }

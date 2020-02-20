@@ -6,6 +6,7 @@
 #[macro_use] extern crate serde_derive;
 
 mod actor;
+mod image;
 
 use std::vec::Vec;
 
@@ -17,6 +18,7 @@ fn index() -> &'static str {
 fn main() {
   rocket::ignite()
     .mount("/", routes![index])
-    .mount("/actor", actor::get_actor_routes())
+    // .mount("/actor", actor::get_actor_routes())
+    .mount("/image", image::get_image_routes())
     .launch();
 }
