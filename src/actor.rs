@@ -82,8 +82,8 @@ fn delete_actor(id: &RawStr) -> Status {
   }
 }
 
-#[get("/?<query>&<take>&<skip>&<sort_by>&<sort_dir>&<bookmark>&<favorite>&<rating>")]
-fn get_actors(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort_by: Option<&RawStr>, sort_dir: Option<&RawStr>, bookmark: Option<&RawStr>, favorite: Option<&RawStr>, rating: Option<&RawStr>) -> Json<JsonValue> {
+#[get("/?<query>&<take>&<skip>&<sort_by>&<sort_dir>&<bookmark>&<favorite>&<rating>&<include>&<exclude>")]
+fn get_actors(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort_by: Option<&RawStr>, sort_dir: Option<&RawStr>, bookmark: Option<&RawStr>, favorite: Option<&RawStr>, rating: Option<&RawStr>, include: Option<&RawStr>, exclude: Option<&RawStr>) -> Json<JsonValue> {
   let s = query.url_decode().unwrap();
   println!("Searching for {}", s);
   let now = Instant::now();
@@ -177,6 +177,44 @@ fn get_actors(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort
   if !rating.is_none() {
     let rating_value = rating.unwrap().parse::<u8>().expect("Invalid rating");
     real_actors.retain(|a| a.rating >= rating_value);
+  }
+
+  if !include.is_none() {
+    let include_labels = include.unwrap().as_str().split(",").collect::<Vec<&str>>();
+    real_actors.retain(|a| {
+      for include in include_labels.iter() {
+        let include_label = String::from(*include);
+        let mut is_labelled = false;
+        for label in a.labels.iter() {
+          if label.id == include_label {
+            is_labelled = true;
+          }
+        }
+        if !is_labelled {
+          return false;
+        }
+      } 
+      return true;
+    });
+  }
+
+  if !exclude.is_none() {
+    let exclude_labels = exclude.unwrap().as_str().split(",").collect::<Vec<&str>>();
+    real_actors.retain(|a| {
+      for exclude in exclude_labels.iter() {
+        let exclude_label = String::from(*exclude);
+        let mut is_labelled = false;
+        for label in a.labels.iter() {
+          if label.id == exclude_label {
+            is_labelled = true;
+          }
+        }
+        if is_labelled {
+          return false;
+        }
+      } 
+      return true;
+    });
   }
 
   if !sort_by.is_none() {
