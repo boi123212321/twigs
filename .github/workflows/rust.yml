@@ -4,8 +4,12 @@ on: [push]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+        rust: [nightly]
 
     steps:
     - uses: actions/checkout@v2
