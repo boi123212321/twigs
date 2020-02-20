@@ -1,6 +1,8 @@
 name: Rust Mac
 
-on: [push]
+on:
+  release:
+    types: [created]
 
 jobs:
   build:
@@ -16,3 +18,11 @@ jobs:
         run: rustup toolchain install nightly
       - name: Build
         run: cargo +nightly build --release
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            target/release/twigs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
