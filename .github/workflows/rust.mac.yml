@@ -18,11 +18,13 @@ jobs:
         run: rustup toolchain install nightly
       - name: Build
         run: cargo +nightly build --release
+      - name: Rename
+        run: mv target/release/twigs target/release/twigs_mac
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            target/release/twigs
+            target/release/twigs_mac
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
