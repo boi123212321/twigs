@@ -25,12 +25,15 @@ struct Label {
 struct Actor {
   id: String,
   name: String,
-  born_on: Option<i32>,
+  added_on: u32,
+  born_on: Option<u32>,
   aliases: Vec<String>,
   labels: Vec<Label>,
   bookmark: bool,
   favorite: bool,
   rating: u8,
+  num_scenes: u32,
+  num_views: u32,
 }
 
 #[delete("/")]
@@ -72,10 +75,7 @@ fn delete_actor(id: &RawStr) -> Status {
     actors.remove(&internal_id);
 
     for vec in tokens.values_mut() {
-      // TODO: return internal_id from all token arrays
-      for val in vec.iter_mut() {
-        println!("{:?}", val);
-      }
+      vec.retain(|x| *x != internal_id);
     }
 
     return Status::Ok;
@@ -185,6 +185,46 @@ fn get_actors(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort
       real_actors.sort_by(|a,b| {
         let a = a.born_on.unwrap_or(0);
         let b = b.born_on.unwrap_or(0);
+        return a.partial_cmp(&b).unwrap();
+      });
+      if !sort_dir.is_none() && sort_dir.unwrap() == "desc" {
+        real_actors.reverse();
+      }
+    }
+    if sort_by.unwrap() == "rating" {
+      real_actors.sort_by(|a,b| {
+        let a = a.rating;
+        let b = b.rating;
+        return a.partial_cmp(&b).unwrap();
+      });
+      if !sort_dir.is_none() && sort_dir.unwrap() == "desc" {
+        real_actors.reverse();
+      }
+    }
+    if sort_by.unwrap() == "addedOn" || sort_by.unwrap() == "added_on" {
+      real_actors.sort_by(|a,b| {
+        let a = a.added_on;
+        let b = b.added_on;
+        return a.partial_cmp(&b).unwrap();
+      });
+      if !sort_dir.is_none() && sort_dir.unwrap() == "desc" {
+        real_actors.reverse();
+      }
+    }
+    if sort_by.unwrap() == "numScenes" || sort_by.unwrap() == "num_scenes" {
+      real_actors.sort_by(|a,b| {
+        let a = a.num_scenes;
+        let b = b.num_scenes;
+        return a.partial_cmp(&b).unwrap();
+      });
+      if !sort_dir.is_none() && sort_dir.unwrap() == "desc" {
+        real_actors.reverse();
+      }
+    }
+    if sort_by.unwrap() == "numViews" || sort_by.unwrap() == "num_views" {
+      real_actors.sort_by(|a,b| {
+        let a = a.num_views;
+        let b = b.num_views;
         return a.partial_cmp(&b).unwrap();
       });
       if !sort_dir.is_none() && sort_dir.unwrap() == "desc" {
