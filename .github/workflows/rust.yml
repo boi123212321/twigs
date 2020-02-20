@@ -25,9 +25,9 @@ jobs:
         run: rustup target add x86_64-pc-windows-gnu
       - name: Get mingw
         run: sudo apt install mingw-w64
+      - name: Build win
+        run: cargo +nightly build --target x86_64-pc-windows-gnu --release
       - name: Build linux
         run: cargo +nightly build --target x86_64-unknown-linux-gnu --release
       - name: Build mac
         run: cargo +nightly build --target x86_64-apple-darwin --release
-      - name: Build win
-        run: cargo +nightly build --target x86_64-pc-windows-gnu --release
