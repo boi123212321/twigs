@@ -82,8 +82,8 @@ fn delete_image(id: &RawStr) -> Status {
   }
 }
 
-#[get("/?<query>&<take>&<skip>&<sort_by>&<sort_dir>&<bookmark>&<favorite>&<rating>&<include>&<exclude>")]
-fn get_images(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort_by: Option<&RawStr>, sort_dir: Option<&RawStr>, bookmark: Option<&RawStr>, favorite: Option<&RawStr>, rating: Option<&RawStr>, include: Option<&RawStr>, exclude: Option<&RawStr>) -> Json<JsonValue> {
+#[get("/?<query>&<take>&<skip>&<sort_by>&<sort_dir>&<bookmark>&<favorite>&<rating>&<include>&<exclude>&<scene>&<actors>")]
+fn get_images(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort_by: Option<&RawStr>, sort_dir: Option<&RawStr>, bookmark: Option<&RawStr>, favorite: Option<&RawStr>, rating: Option<&RawStr>, include: Option<&RawStr>, exclude: Option<&RawStr>, scene: Option<&RawStr>, actors: Option<&RawStr>) -> Json<JsonValue> {
   let s = query.url_decode().unwrap();
   println!("Searching for {}", s);
   let now = Instant::now();
@@ -182,6 +182,30 @@ fn get_images(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort
       } 
       return true;
     });
+  }
+
+  if !actors.is_none() && actors.unwrap().len() > 0 {
+    let include_actors = actors.unwrap().as_str().split(",").collect::<Vec<&str>>();
+    real_images.retain(|a| {
+      for include in include_actors.iter() {
+        let include_actor = String::from(*include);
+        let mut features_actor = false;
+        for actor in a.actors.iter() {
+          if actor.id == include_actor {
+            features_actor = true;
+          }
+        }
+        if !features_actor {
+          return false;
+        }
+      } 
+      return true;
+    });
+  }
+
+  if !scene.is_none() && scene.unwrap().as_str().len() > 0 {
+    let scene_id = scene.unwrap().as_str();
+    real_images.retain(|a| a.scene.as_ref().unwrap_or(&"".to_string()) == scene_id);
   }
 
   if !exclude.is_none() && exclude.unwrap().len() > 0 {
