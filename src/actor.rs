@@ -165,7 +165,7 @@ fn get_actors(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort
     real_actors.retain(|a| a.rating >= rating_value);
   }
 
-  if !include.is_none() {
+  if !include.is_none() && include.unwrap().len() > 0 {
     let include_labels = include.unwrap().as_str().split(",").collect::<Vec<&str>>();
     real_actors.retain(|a| {
       for include in include_labels.iter() {
@@ -184,7 +184,7 @@ fn get_actors(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort
     });
   }
 
-  if !exclude.is_none() {
+  if !exclude.is_none() && exclude.unwrap().len() > 0 {
     let exclude_labels = exclude.unwrap().as_str().split(",").collect::<Vec<&str>>();
     real_actors.retain(|a| {
       for exclude in exclude_labels.iter() {
@@ -285,7 +285,7 @@ fn get_actors(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort
   }
 
   let num_hits = real_actors.len();
-  let mut page: Vec<_> = real_actors.iter_mut().rev().skip(_skip).take(_take).collect();
+  let page: Vec<_> = real_actors.iter_mut().rev().skip(_skip).take(_take).collect();
 
   Json(json!({
     "query": s,
