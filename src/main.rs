@@ -9,6 +9,7 @@ mod actor;
 mod image;
 
 use std::vec::Vec;
+use rocket::config::{Config, Limits, Environment};
 
 #[get("/")]
 fn index() -> &'static str {
@@ -16,7 +17,17 @@ fn index() -> &'static str {
 }
 
 fn main() {
-  rocket::ignite()
+  let limits = Limits::new()
+    .limit("forms", 500 * 1024)
+    .limit("json", 5000000 * 1024 * 1024);
+
+  let config = Config::build(Environment::Production)
+    .limits(limits)
+    .unwrap();
+
+  let app = rocket::custom(config);
+
+  app
     .mount("/", routes![index])
     // .mount("/actor", actor::get_actor_routes())
     .mount("/image", image::get_image_routes())

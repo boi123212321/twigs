@@ -138,21 +138,7 @@ fn get_actors(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort
   
     // Get real actors
   
-    let mut _skip = 0;
-    
-    match skip {
-      Some(val) => { _skip = val.as_str().parse().expect("Not a number"); },
-      None => { _skip = 0; }
-    };
-  
-    let mut _take = 99999999999;
-  
-    match take {
-      Some(val) => { _take = val.as_str().parse().expect("Not a number"); },
-      None => { _take = 99999999999; }
-    };
-  
-    for tuple in key_score_list.iter_mut().rev().skip(_skip).take(_take) {
+    for tuple in key_score_list.iter_mut().rev() {
       // if tuple.1 >= num_ngrams / 2 {
         real_actors.push(
           actors.get(&tuple.0).unwrap().clone()
@@ -217,6 +203,20 @@ fn get_actors(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort
     });
   }
 
+  let mut _skip = 0;
+    
+  match skip {
+    Some(val) => { _skip = val.as_str().parse().expect("Not a number"); },
+    None => { _skip = 0; }
+  };
+
+  let mut _take = 99999999999;
+
+  match take {
+    Some(val) => { _take = val.as_str().parse().expect("Not a number"); },
+    None => { _take = 99999999999; }
+  };
+
   if !sort_by.is_none() {
     // Sort by attribute
     if sort_by.unwrap() == "age" {
@@ -225,7 +225,7 @@ fn get_actors(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort
         let b = b.born_on.unwrap_or(0);
         return a.partial_cmp(&b).unwrap();
       });
-      if !sort_dir.is_none() && sort_dir.unwrap() == "desc" {
+      if !sort_dir.is_none() && sort_dir.unwrap() == "asc" {
         real_actors.reverse();
       }
     }
@@ -235,7 +235,7 @@ fn get_actors(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort
         let b = b.rating;
         return a.partial_cmp(&b).unwrap();
       });
-      if !sort_dir.is_none() && sort_dir.unwrap() == "desc" {
+      if !sort_dir.is_none() && sort_dir.unwrap() == "asc" {
         real_actors.reverse();
       }
     }
@@ -245,7 +245,7 @@ fn get_actors(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort
         let b = b.added_on;
         return a.partial_cmp(&b).unwrap();
       });
-      if !sort_dir.is_none() && sort_dir.unwrap() == "desc" {
+      if !sort_dir.is_none() && sort_dir.unwrap() == "asc" {
         real_actors.reverse();
       }
     }
@@ -255,7 +255,7 @@ fn get_actors(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort
         let b = b.num_scenes;
         return a.partial_cmp(&b).unwrap();
       });
-      if !sort_dir.is_none() && sort_dir.unwrap() == "desc" {
+      if !sort_dir.is_none() && sort_dir.unwrap() == "asc" {
         real_actors.reverse();
       }
     }
@@ -265,17 +265,17 @@ fn get_actors(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort
         let b = b.num_views;
         return a.partial_cmp(&b).unwrap();
       });
-      if !sort_dir.is_none() && sort_dir.unwrap() == "desc" {
+      if !sort_dir.is_none() && sort_dir.unwrap() == "asc" {
         real_actors.reverse();
       }
     }
-    else if sort_by.unwrap() == "name" {
+    else if sort_by.unwrap() == "name" || sort_by.unwrap() == "alpha" {
       real_actors.sort_by(|a,b| {
         let a = &a.name;
         let b = &b.name;
         return a.to_lowercase().cmp(&b.to_lowercase());
       });
-      if !sort_dir.is_none() && sort_dir.unwrap() == "desc" {
+      if !sort_dir.is_none() && sort_dir.unwrap() == "asc" {
         real_actors.reverse();
       }
     }
@@ -284,6 +284,9 @@ fn get_actors(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort
     }
   }
 
+  let num_hits = real_actors.len();
+  let mut page: Vec<_> = real_actors.iter_mut().rev().skip(_skip).take(_take).collect();
+
   Json(json!({
     "query": s,
     "time": {
@@ -291,8 +294,8 @@ fn get_actors(query: &RawStr, take: Option<&RawStr>, skip: Option<&RawStr>, sort
       "milli": now.elapsed().as_millis() as u64,
       "micro": now.elapsed().as_micros() as u64,
     },
-    "size": real_actors.len(),
-    "result": real_actors
+    "num_hits": num_hits,
+    "items": page
   }))
 }
 
