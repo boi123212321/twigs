@@ -10,7 +10,7 @@ use std::vec::Vec;
 
 lazy_static! {
     static ref ID_MAP: Mutex<HashMap<String, u32>> = Mutex::new(HashMap::new());
-    static ref IMAGES: Mutex<HashMap<u32, Image>> = Mutex::new(HashMap::new());
+    static ref IMAGES: Mutex<HashMap<u32, StoredImage>> = Mutex::new(HashMap::new());
     static ref TOKENS: Mutex<HashMap<String, Vec<u32>>> = Mutex::new(HashMap::new());
 }
 
@@ -22,10 +22,10 @@ struct Aliasable {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-struct Image {
+struct InputImage {
     id: String,
     name: String,
-    added_on: u64,
+    added_on: i64,
     actors: Vec<Aliasable>,
     labels: Vec<Aliasable>,
     bookmark: bool,
@@ -34,6 +34,27 @@ struct Image {
     scene: Option<String>,
     scene_name: Option<String>,
     studio_name: Option<String>,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+struct StoredImage {
+  id: String,
+  name: String,
+  added_on: i64,
+  bookmark: bool,
+  favorite: bool,
+  rating: u8,
+}
+
+fn create_storage_image(input: &InputImage) -> StoredImage {
+  StoredImage {
+    id: input.id.clone(),
+    name: input.name.clone(),
+    added_on: input.added_on,
+    bookmark: input.bookmark,
+    favorite: input.favorite,
+    rating: input.rating
+  } 
 }
 
 #[delete("/")]
@@ -107,7 +128,7 @@ fn get_images(
     let result = regex.replace_all(&s, " ").to_lowercase();
 
     let images = IMAGES.lock().unwrap();
-    let mut real_images: Vec<Image> = Vec::new();
+    let mut real_images: Vec<StoredImage> = Vec::new();
 
     if result.len() > 0 {
         for token in result.split(" ") {
@@ -172,7 +193,7 @@ fn get_images(
         real_images.retain(|a| a.rating >= rating_value);
     }
 
-    if !include.is_none() && include.unwrap().len() > 0 {
+    /* if !include.is_none() && include.unwrap().len() > 0 {
         let include_labels = include.unwrap().as_str().split(",").collect::<Vec<&str>>();
         real_images.retain(|a| {
             for include in include_labels.iter() {
@@ -189,9 +210,9 @@ fn get_images(
             }
             return true;
         });
-    }
+    } */
 
-    if !actors.is_none() && actors.unwrap().len() > 0 {
+    /* if !actors.is_none() && actors.unwrap().len() > 0 {
         let include_actors = actors.unwrap().as_str().split(",").collect::<Vec<&str>>();
         real_images.retain(|a| {
             for include in include_actors.iter() {
@@ -208,14 +229,14 @@ fn get_images(
             }
             return true;
         });
-    }
+    } */
 
-    if !scene.is_none() && scene.unwrap().as_str().len() > 0 {
+    /* if !scene.is_none() && scene.unwrap().as_str().len() > 0 {
         let scene_id = scene.unwrap().as_str();
         real_images.retain(|a| a.scene.as_ref().unwrap_or(&"".to_string()) == scene_id);
-    }
+    } */
 
-    if !exclude.is_none() && exclude.unwrap().len() > 0 {
+    /* if !exclude.is_none() && exclude.unwrap().len() > 0 {
         let exclude_labels = exclude.unwrap().as_str().split(",").collect::<Vec<&str>>();
         real_images.retain(|a| {
             for exclude in exclude_labels.iter() {
@@ -232,7 +253,7 @@ fn get_images(
             }
             return true;
         });
-    }
+    } */
 
     let mut _skip = 0;
 
@@ -298,6 +319,8 @@ fn get_images(
         .take(_take)
         .collect();
 
+    let ids: Vec<String> = page.into_iter().map(|x| x.id.clone()).collect();
+
     Json(json!({
       "query": s,
       "time": {
@@ -306,7 +329,7 @@ fn get_images(
         "micro": now.elapsed().as_micros() as u64,
       },
       "num_hits": num_hits,
-      "items": page
+      "items": ids
     }))
 }
 
@@ -328,7 +351,7 @@ fn process_string(s: String, id: u32) {
         let regex = Regex::new(r"[^a-zA-Z0-9]").unwrap();
         let result = regex.replace_all(&s, " ").to_lowercase();
 
-        for token in result.split(" ") {
+        for token in result.split(" ").filter(|x| x.len() > 2) {
             if !tokens.contains_key(token) {
                 tokens.insert(token.to_string(), vec![id]);
             } else {
@@ -350,40 +373,45 @@ fn process_labels(labels: Vec<Aliasable>, ret_id: u32) {
     }
 }
 
-#[post("/", data = "<inputs>")]
-fn create_images(inputs: Json<Vec<Image>>) -> Json<JsonValue> {
-    let mut id_map = ID_MAP.lock().unwrap();
+#[post("/", format = "json", data = "<inputs>")]
+fn create_images(inputs: Json<Vec<InputImage>>) -> Json<JsonValue> {
+  println!("Received new images");
+  let mut id_map = ID_MAP.lock().unwrap();
 
-    let mut images = IMAGES.lock().unwrap();
-    let input_images = inputs.into_inner();
+  let mut images = IMAGES.lock().unwrap();
+  let input_images = inputs.into_inner();
 
-    let mut created_images: Vec<Image> = Vec::new();
+  for image in input_images.iter() {
+      let id = images.len() as u32;
 
-    for image in input_images.iter() {
-        let id = images.len() as u32;
-        let ret_id = id.clone();
-        let ret_image = image.clone();
+      images.insert(id, create_storage_image(&image));
 
-        images.insert(id, image.clone());
+      id_map.insert(image.id.clone(), id);
 
-        id_map.insert(image.id.clone(), id);
+      process_string(image.name.clone(), id);
+      if !image.scene_name.is_none() {
+          process_string(image.clone().scene_name.unwrap().clone(), id);
+      }
+      if !image.studio_name.is_none() {
+          process_string(image.clone().studio_name.unwrap().clone(), id);
+      }
+      process_labels(image.clone().actors.clone(), id);
+      process_labels(image.clone().labels.clone(), id);
+  }
 
-        process_string(ret_image.name.clone(), ret_id);
-        if !ret_image.scene_name.is_none() {
-            process_string(ret_image.clone().scene_name.unwrap().clone(), ret_id);
-        }
-        if !ret_image.studio_name.is_none() {
-            process_string(ret_image.clone().studio_name.unwrap().clone(), ret_id);
-        }
-        process_labels(ret_image.clone().actors.clone(), ret_id);
-        process_labels(ret_image.clone().labels.clone(), ret_id);
-        created_images.push(ret_image);
-    }
+  let tokens = TOKENS.lock().unwrap();
 
-    Json(json!({
-      "size": images.len(),
-      "images": created_images,
-    }))
+  let mut num_ref = 0;
+  for vec in tokens.values() {
+    num_ref += vec.len();
+  }
+
+  Json(json!({
+    "size": images.len(),
+    "num_tokens": tokens.len(),
+    "num_references": num_ref,
+    "num_references_per_token": if tokens.len() == 0 { 0 } else { num_ref / tokens.len() }
+  }))
 }
 
 pub fn get_image_routes() -> Vec<rocket::Route> {

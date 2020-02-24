@@ -25,8 +25,8 @@ struct Aliasable {
 struct Actor {
     id: String,
     name: String,
-    added_on: u32,
-    born_on: Option<u32>,
+    added_on: i64,
+    born_on: Option<i64>,
     aliases: Vec<String>,
     labels: Vec<Aliasable>,
     bookmark: bool,

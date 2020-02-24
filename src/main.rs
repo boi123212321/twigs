@@ -21,7 +21,7 @@ fn index() -> &'static str {
 
 fn main() {
     let limits = Limits::new()
-        .limit("forms", 500 * 1024)
+        .limit("forms", 5000000 * 1024 * 1024)
         .limit("json", 5000000 * 1024 * 1024);
 
     let config = Config::build(Environment::Production)
