@@ -64,7 +64,6 @@ fn clear_actors() -> Status {
     let mut actors = ACTORS.lock().unwrap();
     let mut tokens = TOKENS.lock().unwrap();
 
-    // TODO: clear memory
     actors.clear();
     tokens.clear();
     id_map.clear();
@@ -75,7 +74,7 @@ fn clear_actors() -> Status {
     Status::Ok
 }
 
-// TODO: support vector of strings as input (from request body)
+// TODO: support list of strings as input (from request body)
 #[delete("/<id>")]
 fn delete_actor(id: &RawStr) -> Status {
     println!("Deleting {}", id.as_str());
@@ -115,7 +114,7 @@ fn get_actors(
     exclude: Option<&RawStr>,
 ) -> Json<JsonValue> {
     let s = query.url_decode().unwrap();
-    println!("Searching for {}", s);
+    println!("Searching actors for {}", s);
     let now = Instant::now();
 
     let tokens = TOKENS.lock().unwrap();
@@ -401,7 +400,7 @@ fn create_actors(inputs: Json<Vec<Actor>>) -> Json<JsonValue> {
     }))
 }
 
-pub fn get_actor_routes() -> Vec<rocket::Route> {
+pub fn get_routes() -> Vec<rocket::Route> {
     routes![
         get_actors,
         create_actors,
