@@ -44,17 +44,25 @@ struct StoredImage {
   bookmark: bool,
   favorite: bool,
   rating: u8,
+  scene: Option<String>,
+  actors: Vec<String>,
+  labels: Vec<String>
 }
 
 fn create_storage_image(input: &InputImage) -> StoredImage {
+  let actors: Vec<String> = input.actors.clone().into_iter().map(|x| x.id.clone()).collect();
+  let labels: Vec<String> = input.labels.clone().into_iter().map(|x| x.id.clone()).collect();
   StoredImage {
     id: input.id.clone(),
     name: input.name.clone(),
     added_on: input.added_on,
     bookmark: input.bookmark,
     favorite: input.favorite,
-    rating: input.rating
-  } 
+    rating: input.rating,
+    scene: input.scene.clone(),
+    actors: actors,
+    labels: labels
+  }
 }
 
 #[delete("/")]
@@ -193,14 +201,14 @@ fn get_images(
         real_images.retain(|a| a.rating >= rating_value);
     }
 
-    /* if !include.is_none() && include.unwrap().len() > 0 {
+    if !include.is_none() && include.unwrap().len() > 0 {
         let include_labels = include.unwrap().as_str().split(",").collect::<Vec<&str>>();
         real_images.retain(|a| {
             for include in include_labels.iter() {
                 let include_label = String::from(*include);
                 let mut is_labelled = false;
                 for label in a.labels.iter() {
-                    if label.id == include_label {
+                    if *label == include_label {
                         is_labelled = true;
                     }
                 }
@@ -210,16 +218,16 @@ fn get_images(
             }
             return true;
         });
-    } */
+    }
 
-    /* if !actors.is_none() && actors.unwrap().len() > 0 {
+    if !actors.is_none() && actors.unwrap().len() > 0 {
         let include_actors = actors.unwrap().as_str().split(",").collect::<Vec<&str>>();
         real_images.retain(|a| {
             for include in include_actors.iter() {
                 let include_actor = String::from(*include);
                 let mut features_actor = false;
                 for actor in a.actors.iter() {
-                    if actor.id == include_actor {
+                    if *actor == include_actor {
                         features_actor = true;
                     }
                 }
@@ -229,21 +237,21 @@ fn get_images(
             }
             return true;
         });
-    } */
+    }
 
-    /* if !scene.is_none() && scene.unwrap().as_str().len() > 0 {
+    if !scene.is_none() && scene.unwrap().as_str().len() > 0 {
         let scene_id = scene.unwrap().as_str();
         real_images.retain(|a| a.scene.as_ref().unwrap_or(&"".to_string()) == scene_id);
-    } */
+    }
 
-    /* if !exclude.is_none() && exclude.unwrap().len() > 0 {
+    if !exclude.is_none() && exclude.unwrap().len() > 0 {
         let exclude_labels = exclude.unwrap().as_str().split(",").collect::<Vec<&str>>();
         real_images.retain(|a| {
             for exclude in exclude_labels.iter() {
                 let exclude_label = String::from(*exclude);
                 let mut is_labelled = false;
                 for label in a.labels.iter() {
-                    if label.id == exclude_label {
+                    if *label == exclude_label {
                         is_labelled = true;
                     }
                 }
@@ -253,7 +261,7 @@ fn get_images(
             }
             return true;
         });
-    } */
+    }
 
     let mut _skip = 0;
 
