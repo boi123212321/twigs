@@ -26,6 +26,7 @@ struct InputScene {
   id: String,
   name: String,
   added_on: i64,
+  release_date: Option<i64>,
   bookmark: bool,
   favorite: bool,
   rating: Option<u8>,
@@ -36,6 +37,7 @@ struct InputScene {
   size: Option<u64>,
   studio: Option<String>,
   studio_name: Option<String>,
+  resolution: Option<u16>
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -51,7 +53,9 @@ struct StoredScene {
   labels: Vec<String>,
   num_watches: u16,
   duration: Option<u16>,
-  size: Option<u64>
+  size: Option<u64>,
+  resolution: Option<u16>,
+  release_date: Option<i64>
 }
 
 fn create_storage_scene(input: &InputScene) -> StoredScene {
@@ -69,11 +73,34 @@ fn create_storage_scene(input: &InputScene) -> StoredScene {
     labels: labels,
     num_watches: input.num_watches,
     duration: input.duration,
-    size: input.size
+    size: input.size,
+    resolution: input.resolution,
+    release_date: input.release_date
   }
 }
 
-// TODO: update route
+#[put("/<id>", data = "<inputs>")]
+fn update_scene(id: &RawStr, inputs: Json<InputScene>) -> Status {
+    let id_map = ID_MAP.lock().unwrap();
+    let mut scenes = SCENES.lock().unwrap();
+    let input_scene = inputs.into_inner();
+
+    let scene_id = id.as_str();
+
+    if id_map.contains_key(scene_id) {
+        let uid = id_map[scene_id];
+        *scenes.get_mut(&uid).unwrap() = create_storage_scene(&input_scene);
+        process_string(input_scene.name.clone(), uid);
+        process_labels(input_scene.clone().labels.clone(), uid);
+	process_labels(input_scene.clone().actors.clone(), uid);
+        if !input_scene.studio_name.is_none() {
+          process_string(input_scene.clone().studio_name.unwrap().clone(), uid);
+        }
+        return Status::Ok;
+    } else {
+        return Status::NotFound;
+    }
+}
 
 // TODO: support list of strings as input (from request body)
 #[delete("/<id>")]
@@ -109,7 +136,6 @@ fn clear_scenes() -> Status {
   let mut scenes = SCENES.lock().unwrap();
   let mut tokens = TOKENS.lock().unwrap();
 
-  // TODO: clear memory
   scenes.clear();
   tokens.clear();
   id_map.clear();
@@ -331,6 +357,33 @@ fn get_scenes(
           real_scenes.sort_by(|a, b| {
               let a = a.duration.unwrap_or(0);
               let b = b.duration.unwrap_or(0);
+              return a.partial_cmp(&b).unwrap();
+          });
+          if !sort_dir.is_none() && sort_dir.unwrap() == "asc" {
+              real_scenes.reverse();
+          }
+        } else if sort_by.unwrap() == "resolution" {
+          real_scenes.sort_by(|a, b| {
+              let a = a.resolution.unwrap_or(0);
+              let b = b.resolution.unwrap_or(0);
+              return a.partial_cmp(&b).unwrap();
+          });
+          if !sort_dir.is_none() && sort_dir.unwrap() == "asc" {
+              real_scenes.reverse();
+          }
+        } else if sort_by.unwrap() == "size" {
+          real_scenes.sort_by(|a, b| {
+              let a = a.size.unwrap_or(0);
+              let b = b.size.unwrap_or(0);
+              return a.partial_cmp(&b).unwrap();
+          });
+          if !sort_dir.is_none() && sort_dir.unwrap() == "asc" {
+              real_scenes.reverse();
+          }
+        } else if sort_by.unwrap() == "date" {
+          real_scenes.sort_by(|a, b| {
+              let a = a.resolution.unwrap_or(0);
+              let b = b.resolution.unwrap_or(0);
               return a.partial_cmp(&b).unwrap();
           });
           if !sort_dir.is_none() && sort_dir.unwrap() == "asc" {

@@ -12,7 +12,6 @@ extern crate serde_derive;
 mod scene;
 mod image;
 
-
 use rocket::config::{Config, Environment, Limits};
 use std::vec::Vec;
 
@@ -34,7 +33,7 @@ fn main() {
 
   app
     .mount("/", routes![index])
-    .mount("/scene", image::get_routes())
+    .mount("/scene", scene::get_routes())
     .mount("/image", image::get_routes())
   //.mount("/actor", actor::get_routes())
     .launch();

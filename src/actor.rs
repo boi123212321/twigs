@@ -9,31 +9,31 @@ use std::time::Instant;
 use std::vec::Vec;
 
 lazy_static! {
-    static ref ID_MAP: Mutex<HashMap<String, u32>> = Mutex::new(HashMap::new());
-    static ref ACTORS: Mutex<HashMap<u32, Actor>> = Mutex::new(HashMap::new());
-    static ref TOKENS: Mutex<HashMap<String, Vec<u32>>> = Mutex::new(HashMap::new());
+  static ref ID_MAP: Mutex<HashMap<String, u32>> = Mutex::new(HashMap::new());
+  static ref ACTORS: Mutex<HashMap<u32, Actor>> = Mutex::new(HashMap::new());
+  static ref TOKENS: Mutex<HashMap<String, Vec<u32>>> = Mutex::new(HashMap::new());
 }
 
 #[derive(Clone, Serialize, Deserialize)]
 struct Aliasable {
-    id: String,
-    name: String,
-    aliases: Option<Vec<String>>,
+  id: String,
+  name: String,
+  aliases: Option<Vec<String>>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
 struct Actor {
-    id: String,
-    name: String,
-    added_on: i64,
-    born_on: Option<i64>,
-    aliases: Vec<String>,
-    labels: Vec<Aliasable>,
-    bookmark: bool,
-    favorite: bool,
-    rating: u8,
-    num_scenes: u32,
-    num_views: u32,
+  id: String,
+  name: String,
+  added_on: i64,
+  born_on: Option<i64>,
+  aliases: Vec<String>,
+  labels: Vec<Aliasable>,
+  bookmark: bool,
+  favorite: bool,
+  rating: u8,
+  num_scenes: u32,
+  num_views: u32,
 }
 
 #[put("/<id>", data = "<inputs>")]
