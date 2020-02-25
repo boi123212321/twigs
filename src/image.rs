@@ -83,7 +83,33 @@ fn clear_images() -> Status {
   Status::Ok
 }
 
-// TODO: update route
+#[put("/<id>", data = "<inputs>")]
+fn update_image(id: &RawStr, inputs: Json<InputImage>) -> Status {
+  let id_map = ID_MAP.lock().unwrap();
+  let mut images = IMAGES.lock().unwrap();
+  let input_image = inputs.into_inner();
+
+  let image_id = id.as_str();
+
+  if id_map.contains_key(image_id) {
+    let uid = id_map[image_id];
+    *images.get_mut(&uid).unwrap() = create_storage_image(&input_image);
+    
+    process_string(input_image.name.clone(), uid);
+    if !input_image.scene_name.is_none() {
+      process_string(input_image.clone().scene_name.unwrap().clone(), uid);
+    }
+    if !input_image.studio_name.is_none() {
+      process_string(input_image.clone().studio_name.unwrap().clone(), uid);
+    }
+    process_labels(input_image.clone().actors.clone(), uid);
+    process_labels(input_image.clone().labels.clone(), uid);
+
+    return Status::Ok;
+  } else {
+    return Status::NotFound;
+  }
+}
 
 // TODO: support list of strings as input (from request body)
 #[delete("/<id>")]
@@ -391,21 +417,21 @@ fn create_images(inputs: Json<Vec<InputImage>>) -> Json<JsonValue> {
   let input_images = inputs.into_inner();
 
   for image in input_images.iter() {
-      let id = images.len() as u32;
+    let id = images.len() as u32;
 
-      images.insert(id, create_storage_image(&image));
+    images.insert(id, create_storage_image(&image));
 
-      id_map.insert(image.id.clone(), id);
+    id_map.insert(image.id.clone(), id);
 
-      process_string(image.name.clone(), id);
-      if !image.scene_name.is_none() {
-          process_string(image.clone().scene_name.unwrap().clone(), id);
-      }
-      if !image.studio_name.is_none() {
-          process_string(image.clone().studio_name.unwrap().clone(), id);
-      }
-      process_labels(image.clone().actors.clone(), id);
-      process_labels(image.clone().labels.clone(), id);
+    process_string(image.name.clone(), id);
+    if !image.scene_name.is_none() {
+      process_string(image.clone().scene_name.unwrap().clone(), id);
+    }
+    if !image.studio_name.is_none() {
+      process_string(image.clone().studio_name.unwrap().clone(), id);
+    }
+    process_labels(image.clone().actors.clone(), id);
+    process_labels(image.clone().labels.clone(), id);
   }
 
   let tokens = TOKENS.lock().unwrap();

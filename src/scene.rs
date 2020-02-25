@@ -81,25 +81,25 @@ fn create_storage_scene(input: &InputScene) -> StoredScene {
 
 #[put("/<id>", data = "<inputs>")]
 fn update_scene(id: &RawStr, inputs: Json<InputScene>) -> Status {
-    let id_map = ID_MAP.lock().unwrap();
-    let mut scenes = SCENES.lock().unwrap();
-    let input_scene = inputs.into_inner();
+  let id_map = ID_MAP.lock().unwrap();
+  let mut scenes = SCENES.lock().unwrap();
+  let input_scene = inputs.into_inner();
 
-    let scene_id = id.as_str();
+  let scene_id = id.as_str();
 
-    if id_map.contains_key(scene_id) {
-        let uid = id_map[scene_id];
-        *scenes.get_mut(&uid).unwrap() = create_storage_scene(&input_scene);
-        process_string(input_scene.name.clone(), uid);
-        process_labels(input_scene.clone().labels.clone(), uid);
-	process_labels(input_scene.clone().actors.clone(), uid);
-        if !input_scene.studio_name.is_none() {
-          process_string(input_scene.clone().studio_name.unwrap().clone(), uid);
-        }
-        return Status::Ok;
-    } else {
-        return Status::NotFound;
+  if id_map.contains_key(scene_id) {
+    let uid = id_map[scene_id];
+    *scenes.get_mut(&uid).unwrap() = create_storage_scene(&input_scene);
+    process_string(input_scene.name.clone(), uid);
+    process_labels(input_scene.clone().labels.clone(), uid);
+    process_labels(input_scene.clone().actors.clone(), uid);
+    if !input_scene.studio_name.is_none() {
+      process_string(input_scene.clone().studio_name.unwrap().clone(), uid);
     }
+    return Status::Ok;
+  } else {
+    return Status::NotFound;
+  }
 }
 
 // TODO: support list of strings as input (from request body)
