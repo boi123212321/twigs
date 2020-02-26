@@ -29,7 +29,7 @@ struct Actor {
   born_on: Option<i64>,
   aliases: Vec<String>,
   labels: Vec<Aliasable>,
-  bookmark: bool,
+  bookmark: bool, // TODO: timestamp
   favorite: bool,
   rating: u8,
   num_scenes: u32,

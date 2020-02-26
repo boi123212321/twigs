@@ -28,7 +28,7 @@ struct InputImage {
   added_on: i64,
   actors: Vec<Aliasable>,
   labels: Vec<Aliasable>,
-  bookmark: bool,
+  bookmark: Option<i64>,
   favorite: bool,
   rating: Option<u8>,
   scene: Option<String>,
@@ -41,7 +41,7 @@ struct StoredImage {
   id: String,
   name: String,
   added_on: i64,
-  bookmark: bool,
+  bookmark: Option<i64>,
   favorite: bool,
   rating: Option<u8>,
   scene: Option<String>,
@@ -220,7 +220,7 @@ fn get_images(
     }
 
     if !bookmark.is_none() && bookmark.unwrap() == "true" {
-        real_images.retain(|a| a.bookmark);
+        real_images.retain(|a| !a.bookmark.is_none());
     }
 
     if !rating.is_none() {
@@ -332,7 +332,16 @@ fn get_images(
             if !sort_dir.is_none() && sort_dir.unwrap() == "asc" {
                 real_images.reverse();
             }
-        } else if sort_by.unwrap() == "name" || sort_by.unwrap() == "alpha" {
+        } else if sort_by.unwrap() == "bookmark" {
+          real_images.sort_by(|a, b| {
+              let a = a.bookmark.unwrap_or(0);
+              let b = b.bookmark.unwrap_or(0);
+              return a.partial_cmp(&b).unwrap();
+          });
+          if !sort_dir.is_none() && sort_dir.unwrap() == "asc" {
+              real_images.reverse();
+          }
+      } else if sort_by.unwrap() == "name" || sort_by.unwrap() == "alpha" {
             real_images.sort_by(|a, b| {
                 let a = &a.name;
                 let b = &b.name;

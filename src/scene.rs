@@ -27,7 +27,7 @@ struct InputScene {
   name: String,
   added_on: i64,
   release_date: Option<i64>,
-  bookmark: bool,
+  bookmark: Option<i64>,
   favorite: bool,
   rating: Option<u8>,
   actors: Vec<Aliasable>,
@@ -45,7 +45,7 @@ struct StoredScene {
   id: String,
   name: String,
   added_on: i64,
-  bookmark: bool,
+  bookmark: Option<i64>,
   favorite: bool,
   rating: Option<u8>,
   studio: Option<String>,
@@ -231,7 +231,7 @@ fn get_scenes(
     }
 
     if !bookmark.is_none() && bookmark.unwrap() == "true" {
-      real_scenes.retain(|a| a.bookmark);
+      real_scenes.retain(|a| !a.bookmark.is_none());
     }
 
     if !rating.is_none() {
@@ -353,7 +353,16 @@ fn get_scenes(
             if !sort_dir.is_none() && sort_dir.unwrap() == "asc" {
                 real_scenes.reverse();
             }
-        } else if sort_by.unwrap() == "duration" {
+        } else if sort_by.unwrap() == "bookmark" {
+          real_scenes.sort_by(|a, b| {
+              let a = a.bookmark.unwrap_or(0);
+              let b = b.bookmark.unwrap_or(0);
+              return a.partial_cmp(&b).unwrap();
+          });
+          if !sort_dir.is_none() && sort_dir.unwrap() == "asc" {
+            real_scenes.reverse();
+          }
+      } else if sort_by.unwrap() == "duration" {
           real_scenes.sort_by(|a, b| {
               let a = a.duration.unwrap_or(0);
               let b = b.duration.unwrap_or(0);
