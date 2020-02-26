@@ -14,10 +14,13 @@ mod image;
 
 use rocket::config::{Config, Environment, Limits};
 use std::vec::Vec;
+use rocket_contrib::json::{Json, JsonValue};
 
 #[get("/")]
-fn index() -> &'static str {
-  "Twigs 0.1"
+fn index() -> Json<JsonValue> {
+  Json(json!({
+    "version": "0.0.3"
+  }))
 }
 
 fn main() {
