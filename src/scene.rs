@@ -98,6 +98,7 @@ fn update_scene(id: &RawStr, inputs: Json<InputScene>) -> Status {
     }
     return Status::Ok;
   } else {
+    println!("{:?}", id_map.keys());
     return Status::NotFound;
   }
 }
@@ -515,5 +516,5 @@ fn create_scenes(inputs: Json<Vec<InputScene>>) -> Json<JsonValue> {
 }
 
 pub fn get_routes() -> Vec<rocket::Route> {
-  routes![get_scenes, create_scenes, delete_scene, clear_scenes]
+  routes![get_scenes, create_scenes, delete_scene, clear_scenes, update_scene]
 }

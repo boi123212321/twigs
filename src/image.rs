@@ -459,5 +459,5 @@ fn create_images(inputs: Json<Vec<InputImage>>) -> Json<JsonValue> {
 }
 
 pub fn get_routes() -> Vec<rocket::Route> {
-    routes![get_images, create_images, delete_image, clear_images]
+    routes![get_images, create_images, delete_image, clear_images, update_image]
 }
