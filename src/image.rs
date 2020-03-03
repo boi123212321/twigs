@@ -1,3 +1,6 @@
+extern crate rust_stemmers;
+
+use rust_stemmers::{Algorithm, Stemmer};
 use lazy_static::lazy_static;
 use regex::Regex;
 use rocket::http::RawStr;
@@ -93,8 +96,7 @@ fn update_image(id: &RawStr, inputs: Json<InputImage>) -> Status {
 
   if id_map.contains_key(image_id) {
     let uid = id_map[image_id];
-    *images.get_mut(&uid).unwrap() = create_storage_image(&input_image);
-    
+    images.insert(uid, create_storage_image(&input_image));
     process_string(input_image.name.clone(), uid);
     if !input_image.scene_name.is_none() {
       process_string(input_image.clone().scene_name.unwrap().clone(), uid);
@@ -135,6 +137,24 @@ fn delete_image(id: &RawStr) -> Status {
 
     return Status::Ok;
   }
+}
+
+#[get("/info")]
+fn get_images_info() -> Json<JsonValue> {
+  let images = IMAGES.lock().unwrap();
+  let tokens = TOKENS.lock().unwrap();
+
+  let mut num_ref = 0;
+  for vec in tokens.values() {
+    num_ref += vec.len();
+  }
+
+  Json(json!({
+    "size": images.len(),
+    "num_tokens": tokens.len(),
+    "num_references": num_ref,
+    "num_references_per_token": if tokens.len() == 0 { 0 } else { num_ref / tokens.len() }
+  }))
 }
 
 #[get("/?<query>&<take>&<skip>&<sort_by>&<sort_dir>&<bookmark>&<favorite>&<rating>&<include>&<exclude>&<scene>&<actors>")]
@@ -386,6 +406,7 @@ fn get_images(
 
 fn process_string(s: String, id: u32) {
     if s.len() > 0 {
+        let en_stemmer = Stemmer::create(Algorithm::English);
         let mut tokens = TOKENS.lock().unwrap();
         // let grams = string_to_ngrams(s);
 
@@ -395,17 +416,17 @@ fn process_string(s: String, id: u32) {
         let regex = Regex::new(r"[^a-zA-Z0-9]").unwrap();
         let result = regex.replace_all(&s, " ").to_lowercase();
 
-        for token in result.split(" ").filter(|x| x.len() > 2) {
-            if !tokens.contains_key(token) {
-                tokens.insert(token.to_string(), vec![id]);
-            } else {
-                match tokens.get_mut(token) {
-                    Some(vec) => {
-                        vec.push(id);
-                    }
-                    None => println!("Token {} does not exist", token),
-                }
+        for token in result.split(" ").filter(|x| x.len() > 2).map(|x| String::from(en_stemmer.stem(x))) {
+          if !tokens.contains_key(&token) {
+            tokens.insert(token.to_string(), vec![id]);
+          } else {
+            match tokens.get_mut(&token) {
+              Some(vec) => {
+                vec.push(id);
+              }
+              None => println!("Token {} does not exist", token),
             }
+          }
         }
     }
 }
@@ -459,5 +480,5 @@ fn create_images(inputs: Json<Vec<InputImage>>) -> Json<JsonValue> {
 }
 
 pub fn get_routes() -> Vec<rocket::Route> {
-    routes![get_images, create_images, delete_image, clear_images, update_image]
+  routes![get_images, create_images, delete_image, clear_images, update_image, get_images_info]
 }

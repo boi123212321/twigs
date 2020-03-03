@@ -1,3 +1,6 @@
+extern crate rust_stemmers;
+
+use rust_stemmers::{Algorithm, Stemmer};
 use lazy_static::lazy_static;
 use regex::Regex;
 use rocket::http::RawStr;
@@ -89,7 +92,7 @@ fn update_scene(id: &RawStr, inputs: Json<InputScene>) -> Status {
 
   if id_map.contains_key(scene_id) {
     let uid = id_map[scene_id];
-    *scenes.get_mut(&uid).unwrap() = create_storage_scene(&input_scene);
+    scenes.insert(uid, create_storage_scene(&input_scene));
     process_string(input_scene.name.clone(), uid);
     process_labels(input_scene.clone().labels.clone(), uid);
     process_labels(input_scene.clone().actors.clone(), uid);
@@ -446,27 +449,28 @@ fn get_scenes(
 
 fn process_string(s: String, id: u32) {
   if s.len() > 0 {
-      let mut tokens = TOKENS.lock().unwrap();
-      // let grams = string_to_ngrams(s);
+    let en_stemmer = Stemmer::create(Algorithm::English);
+    let mut tokens = TOKENS.lock().unwrap();
+    // let grams = string_to_ngrams(s);
 
-      // for gram in grams {
-      // let token: String = gram.into_iter().collect();
+    // for gram in grams {
+    // let token: String = gram.into_iter().collect();
 
-      let regex = Regex::new(r"[^a-zA-Z0-9]").unwrap();
-      let result = regex.replace_all(&s, " ").to_lowercase();
+    let regex = Regex::new(r"[^a-zA-Z0-9]").unwrap();
+    let result = regex.replace_all(&s, " ").to_lowercase();
 
-      for token in result.split(" ").filter(|x| x.len() > 2) {
-          if !tokens.contains_key(token) {
-              tokens.insert(token.to_string(), vec![id]);
-          } else {
-              match tokens.get_mut(token) {
-                  Some(vec) => {
-                      vec.push(id);
-                  }
-                  None => println!("Token {} does not exist", token),
-              }
+    for token in result.split(" ").filter(|x| x.len() > 2).map(|x| String::from(en_stemmer.stem(x))) {
+      if !tokens.contains_key(&token) {
+        tokens.insert(token.to_string(), vec![id]);
+      } else {
+        match tokens.get_mut(&token) {
+          Some(vec) => {
+            vec.push(id);
           }
+          None => println!("Token {} does not exist", token),
+        }
       }
+    }
   }
 }
 

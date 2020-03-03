@@ -19,7 +19,7 @@ use rocket_contrib::json::{Json, JsonValue};
 #[get("/")]
 fn index() -> Json<JsonValue> {
   Json(json!({
-    "version": "0.0.4"
+    "version": "0.0.5"
   }))
 }
 
