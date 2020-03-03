@@ -150,6 +150,24 @@ fn clear_scenes() -> Status {
   Status::Ok
 }
 
+#[get("/info")]
+fn get_scenes_info() -> Json<JsonValue> {
+  let scenes = SCENES.lock().unwrap();
+  let tokens = TOKENS.lock().unwrap();
+
+  let mut num_ref = 0;
+  for vec in tokens.values() {
+    num_ref += vec.len();
+  }
+
+  Json(json!({
+    "size": scenes.len(),
+    "num_tokens": tokens.len(),
+    "num_references": num_ref,
+    "num_references_per_token": if tokens.len() == 0 { 0 } else { num_ref / tokens.len() }
+  }))
+}
+
 #[get("/?<query>&<take>&<skip>&<sort_by>&<sort_dir>&<bookmark>&<favorite>&<rating>&<include>&<exclude>&<studio>&<actors>&<duration_min>&<duration_max>")]
 fn get_scenes(
     query: &RawStr,
@@ -520,5 +538,5 @@ fn create_scenes(inputs: Json<Vec<InputScene>>) -> Json<JsonValue> {
 }
 
 pub fn get_routes() -> Vec<rocket::Route> {
-  routes![get_scenes, create_scenes, delete_scene, clear_scenes, update_scene]
+  routes![get_scenes, create_scenes, delete_scene, clear_scenes, update_scene, get_scenes_info]
 }
