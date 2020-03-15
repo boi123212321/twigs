@@ -185,10 +185,12 @@ fn get_images(
     let images = IMAGES.lock().unwrap();
     let mut real_images: Vec<StoredImage> = Vec::new();
 
+    let en_stemmer = Stemmer::create(Algorithm::English);
+
     if result.len() > 0 {
-        for token in result.split(" ") {
-            if tokens.contains_key(token) {
-                let ids = tokens.get(token).unwrap();
+        for token in result.split(" ").map(|x| String::from(en_stemmer.stem(x))) {
+            if tokens.contains_key(&token) {
+                let ids = tokens.get(&token).unwrap();
 
                 for id in ids.iter() {
                     *scores.entry(*id).or_insert(0) += 1;
